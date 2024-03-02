@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using DCS_BIOS.Serialized;
+using Newtonsoft.Json;
 
 namespace DCS_BIOS.Json
 {
@@ -23,5 +24,12 @@ namespace DCS_BIOS.Json
 
         [JsonProperty("argument", Required = Required.Default)]
         public string Argument { get; set; }
+
+        public DCSBIOSInputInterface GetInputInterface(string controlId)
+        {
+            var inputInterface = new DCSBIOSInputInterface();
+            inputInterface.Consume(controlId, this);
+            return inputInterface;
+        }
     }
 }
