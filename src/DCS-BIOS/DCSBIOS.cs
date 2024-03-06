@@ -108,13 +108,10 @@ namespace DCS_BIOS
         {
             if (disposing)
             {
-                _udpReceiveClient?.Dispose();
-                _udpSendClient?.Dispose();
-                _dcsProtocolParser?.Dispose();
                 Shutdown();
             }
         }
-
+        
         public void Startup()
         {
             try
@@ -123,6 +120,8 @@ namespace DCS_BIOS
                 {
                     return;
                 }
+
+                _udpReceiveThrottleAutoResetEvent = new(false);
 
                 _dcsProtocolParser = DCSBIOSProtocolParser.GetParser();
 
@@ -169,14 +168,25 @@ namespace DCS_BIOS
             try
             {
                 _isRunning = false;
-                _udpReceiveThrottleAutoResetEvent.Set();
-                _udpReceiveClient?.Close();
-                _dcsProtocolParser?.Shutdown();
 
-                _udpReceiveClient = null;
-                _udpReceiveClient = null;
-                _dcsProtocolParser = null;
                 _udpReceiveThrottleTimer.Stop();
+
+                _udpReceiveThrottleAutoResetEvent?.Set();
+                _udpReceiveThrottleAutoResetEvent?.Close();
+                _udpReceiveThrottleAutoResetEvent?.Dispose();
+                _udpReceiveThrottleAutoResetEvent = null;
+
+                _udpReceiveClient?.Close();
+                _udpReceiveClient?.Dispose();
+                _udpReceiveClient = null;
+
+                _udpSendClient?.Close();
+                _udpSendClient?.Dispose();
+                _udpSendClient = null;
+
+                _dcsProtocolParser?.Shutdown();
+                _dcsProtocolParser?.Dispose();
+                _dcsProtocolParser = null;
             }
             catch (Exception ex)
             {
@@ -187,7 +197,7 @@ namespace DCS_BIOS
 
         private void UdpReceiveThrottleTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            _udpReceiveThrottleAutoResetEvent.Set();
+            _udpReceiveThrottleAutoResetEvent?.Set();
         }
 
         public void ReceiveDataUdp()
