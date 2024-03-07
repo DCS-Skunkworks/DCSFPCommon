@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClassLibraryCommon", "Class
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DCS-BIOS", "DCS-BIOS\DCS-BIOS.csproj", "{FF833A01-B683-43B1-ADD3-F0A93A7015F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{CD6C4D32-F265-4D54-AC15-0BD710F24264}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DCSFPCommonTests", "Tests\DCSFPCommonTests.csproj", "{D22FC3E5-0554-4EAF-B46B-735FD644480E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{FF833A01-B683-43B1-ADD3-F0A93A7015F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF833A01-B683-43B1-ADD3-F0A93A7015F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF833A01-B683-43B1-ADD3-F0A93A7015F8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CD6C4D32-F265-4D54-AC15-0BD710F24264}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CD6C4D32-F265-4D54-AC15-0BD710F24264}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CD6C4D32-F265-4D54-AC15-0BD710F24264}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CD6C4D32-F265-4D54-AC15-0BD710F24264}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D22FC3E5-0554-4EAF-B46B-735FD644480E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D22FC3E5-0554-4EAF-B46B-735FD644480E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D22FC3E5-0554-4EAF-B46B-735FD644480E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D22FC3E5-0554-4EAF-B46B-735FD644480E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
