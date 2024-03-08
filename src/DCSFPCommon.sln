@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClassLibraryCommon", "Class
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DCS-BIOS", "DCS-BIOS\DCS-BIOS.csproj", "{FF833A01-B683-43B1-ADD3-F0A93A7015F8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DCSFPCommonTests", "Tests\DCSFPCommonTests.csproj", "{D22FC3E5-0554-4EAF-B46B-735FD644480E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DCSFPCommon.Tests", "DCSFPCommon.Tests\DCSFPCommon.Tests.csproj", "{D22FC3E5-0554-4EAF-B46B-735FD644480E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

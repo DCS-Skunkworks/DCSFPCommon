@@ -1,7 +1,7 @@
 ﻿using ClassLibraryCommon;
 using Xunit;
 
-namespace Tests.ClassLibraryCommon
+namespace DCSFPCommon.Tests.ClassLibraryCommon
 {
     [Collection("Sequential")] // This uses EmulationMode
     public class CommonTests

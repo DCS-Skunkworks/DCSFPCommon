@@ -3,7 +3,7 @@ using DCS_BIOS.ControlLocator;
 using DCS_BIOS.Serialized;
 using Xunit;
 
-namespace Tests.DcsBios
+namespace DCSFPCommon.Tests.DcsBios
 {
     [Collection("Sequential")]
     public class DCSBIOSInputTests
