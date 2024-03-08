@@ -2,7 +2,7 @@
 using DCS_BIOS.Serialized;
 using Xunit;
 
-namespace Tests.DcsBios
+namespace DCSFPCommon.Tests.DcsBios
 {
     public class DCSBIOSInputInterfaceTests
     {
