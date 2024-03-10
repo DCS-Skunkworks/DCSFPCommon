@@ -50,5 +50,6 @@
     <AssemblyVersion>1.0.478.6527</AssemblyVersion>
     <FileVersion>1.0.478.6527</FileVersion>
     <AssemblyName>ClassLibraryCommon</AssemblyName>
+    <Company>DCS-Skunkworks</Company>
   </PropertyGroup>
 </Project>

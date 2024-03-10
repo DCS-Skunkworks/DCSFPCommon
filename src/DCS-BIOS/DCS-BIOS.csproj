@@ -40,7 +40,7 @@
   </ItemGroup>
   <PropertyGroup>
     <Description>For using DCS-BIOS from C# based projects</Description>
-    <Company>ArturDCS (Jerker Dahlblom)</Company>
+    <Company>DCS-Skunkworks</Company>
     <AssemblyVersion>2.1.865.6527</AssemblyVersion>
     <FileVersion>2.1.865.6527</FileVersion>
   </PropertyGroup>
