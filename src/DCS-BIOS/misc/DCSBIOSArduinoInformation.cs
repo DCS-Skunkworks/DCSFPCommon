@@ -298,11 +298,11 @@ namespace DCS_BIOS.misc
             //code.append($("<span>").text('void '+idCamelCase("ON_"+cid+"_CHANGE")+'(unsigned int newValue) {'));
             var str = $"void {functionName}(unsigned int newValue) \n{{\n";
 
-            str += $"\t\t/* your code here */\n}}\n";
+            str += $"\t\t/* your code here */\n}}\n\n";
 
             //code.append($("<span>").text("DcsBios::IntegerBuffer "+idCamelCase(cid+"_BUFFER")+'('+io.address_identifier+', '+idCamelCase("ON_"+cid+"_CHANGE")+');'));
             str += UsingDirectValues;
-            str += $"DcsBios::IntegerBuffer {MakeCamelCase(dcsbiosControl.Identifier + "_BUFFER")}({Common.GetHex(output.Address)}, {Common.GetHex(output.Mask)}, {output.ShiftBy}, {functionName});";
+            str += $"DcsBios::IntegerBuffer {MakeCamelCase(dcsbiosControl.Identifier + "_BUFFER")}({Common.GetHex(output.Address)}, {Common.GetHex(output.Mask)}, {output.ShiftBy}, {functionName});\n";
             str += UsingMacro;
             str += $"DcsBios::IntegerBuffer {MakeCamelCase(dcsbiosControl.Identifier + "_BUFFER")}({output.AddressMaskShiftIdentifier}, {functionName});";
             return str;
@@ -315,7 +315,7 @@ namespace DCS_BIOS.misc
             if (addBanner) str += CommonOutputData(dcsbiosControl, output);
             //code.append($("<span>").text('DcsBios::LED '+idCamelCase(cid)+'('+io.address_identifier+', '));
             str += UsingDirectValues;
-            str += $"DcsBios::LED {functionName}({Common.GetHex(output.Address)}, PIN);";
+            str += $"DcsBios::LED {functionName}({Common.GetHex(output.Address)}, PIN);\n";
             str += UsingMacro;
             str += $"DcsBios::LED {functionName}({output.AddressMaskIdentifier}, PIN);";
 
@@ -329,11 +329,11 @@ namespace DCS_BIOS.misc
             //code.append($("<span>").text('void '+idCamelCase("ON_"+cid+"_CHANGE")+'(char* newValue) {'));
             str += $"void {functionName}((char* newValue)) \n{{\n";
 
-            str += $"\t\t/* your code here */\n}}\n";
+            str += $"\t\t/* your code here */\n}}\n\n";
 
             //code.append($("<span>").text("DcsBios::StringBuffer<" + io.max_length.toString() + "> " + idCamelCase(cid + io.suffix + "_BUFFER") + '(' + io.address_identifier + ', ' + idCamelCase("ON_" + cid + "_CHANGE") + ');'));
             str += UsingDirectValues;
-            str += $"DcsBios::StringBuffer<{output.MaxLength}> {MakeCamelCase(dcsbiosControl.Identifier + output.Suffix + "_BUFFER")}({Common.GetHex(output.Address)}, {functionName});";
+            str += $"DcsBios::StringBuffer<{output.MaxLength}> {MakeCamelCase(dcsbiosControl.Identifier + output.Suffix + "_BUFFER")}({Common.GetHex(output.Address)}, {functionName});\n";
             str += UsingMacro;
             str += $"DcsBios::StringBuffer<{output.MaxLength}> {MakeCamelCase(dcsbiosControl.Identifier + output.Suffix + "_BUFFER")}({output.AddressIdentifier}, {functionName});";
             return str;
@@ -345,7 +345,7 @@ namespace DCS_BIOS.misc
             var str = CommonOutputData(dcsbiosControl, output);
             //code.append($("<span>").text('DcsBios::ServoOutput ' + idCamelCase(cid) + '(' + io.address_only_identifier + ', '));
             str += UsingDirectValues;
-            str += $"DcsBios::ServoOutput {functionName}({Common.GetHex(output.Address)}, PIN, 544, 2400);";
+            str += $"DcsBios::ServoOutput {functionName}({Common.GetHex(output.Address)}, PIN, 544, 2400);\n";
             str += UsingMacro;
             str += $"DcsBios::ServoOutput {functionName}({output.AddressIdentifier}, PIN, 544, 2400);";
             return str;
@@ -356,7 +356,7 @@ namespace DCS_BIOS.misc
             var str = CommonOutputData(dcsbiosControl, output);
             //code.append($("<span>").text("DcsBios::FloatBuffer "+idCamelCase(cid+io.suffix+"_BUFFER")+'('+io.address_identifier+', '+io.value_range[0].toFixed()+', '+io.value_range[1]+ending+');'));
             str += UsingDirectValues;
-            str += $"DcsBios::FloatBuffer {functionName}({Common.GetHex(output.Address)}, 0, {output.MaxLength});";
+            str += $"DcsBios::FloatBuffer {functionName}({Common.GetHex(output.Address)}, 0, {output.MaxLength});\n";
             str += UsingMacro;
             str += $"DcsBios::FloatBuffer {functionName}({output.AddressMaskShiftIdentifier}, 0, {output.MaxLength});";
 
