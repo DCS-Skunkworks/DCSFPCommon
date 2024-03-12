@@ -315,7 +315,7 @@ namespace DCS_BIOS.misc
             if (addBanner) str += CommonOutputData(dcsbiosControl, output);
             //code.append($("<span>").text('DcsBios::LED '+idCamelCase(cid)+'('+io.address_identifier+', '));
             str += UsingDirectValues;
-            str += $"DcsBios::LED {functionName}({Common.GetHex(output.Address)}, PIN);\n";
+            str += $"DcsBios::LED {functionName}({Common.GetHex(output.Address)},{Common.GetHex(output.Mask)}, PIN);\n";
             str += UsingMacro;
             str += $"DcsBios::LED {functionName}({output.AddressMaskIdentifier}, PIN);";
 
@@ -358,7 +358,7 @@ namespace DCS_BIOS.misc
             str += UsingDirectValues;
             str += $"DcsBios::FloatBuffer {functionName}({Common.GetHex(output.Address)}, 0, {output.MaxLength});\n";
             str += UsingMacro;
-            str += $"DcsBios::FloatBuffer {functionName}({output.AddressMaskShiftIdentifier}, 0, {output.MaxLength});";
+            str += $"DcsBios::FloatBuffer {functionName}({output.AddressIdentifier}, 0, {output.MaxLength});";
 
             return str;
         }
