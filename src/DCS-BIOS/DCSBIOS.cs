@@ -67,6 +67,9 @@ namespace DCS_BIOS
         private DCSBIOSProtocolParser _dcsProtocolParser;
         private readonly DcsBiosNotificationMode _dcsBiosNotificationMode;
         private volatile bool _isRunning;
+
+        private readonly object _queueLockObject = new();
+
         public bool IsRunning
         {
             get => _isRunning;
@@ -129,7 +132,7 @@ namespace DCS_BIOS
 
                 _dcsbiosCommandWaitingResetEvent = new(false);
 
-                _ = Task.Run(AsyncSendCommands);
+                _ = Task.Run(SendCommandsAsync);
 
                 _dcsProtocolParser = DCSBIOSProtocolParser.GetParser();
 
@@ -303,45 +306,44 @@ namespace DCS_BIOS
 
 
 
-        public static async Task Send(string stringData)
+        public static async Task SendAsync(string stringData)
         {
-            await _dcsBIOSInstance.QueueDCSBIOSCommand(stringData);
+            await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(stringData);
         }
 
-        public static async Task Send(string[] stringArray)
+        public static async Task SendAsync(string[] stringArray)
         {
             if (stringArray != null)
             {
-                await Send(stringArray.ToList());
+                await SendAsync(stringArray.ToList());
             }
         }
 
-        public static async Task Send(List<string> stringList)
+        public static async Task SendAsync(List<string> stringList)
         {
             if (stringList != null)
             {
                 foreach (var command in stringList)
                 {
-                    await _dcsBIOSInstance.QueueDCSBIOSCommand(command);
+                    await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(command);
                 }
             }
         }
 
-        private object _lockObject = new();
-        private async Task QueueDCSBIOSCommand(string dcsbiosCommand)
+        private async Task QueueDCSBIOSCommandAsync(string dcsbiosCommand)
         {
             if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
 
             var cts = new CancellationTokenSource(DCSBIOSConstants.MS100);
             await _dcsbiosCommandsChannel.Writer.WriteAsync(dcsbiosCommand, cts.Token);
 
-            lock (_lockObject)
+            lock (_queueLockObject)
             {
                 _dcsbiosCommandWaitingResetEvent.Set();
             }
         }
 
-        private async Task AsyncSendCommands()
+        private async Task SendCommandsAsync()
         {
             while (true)
             {
