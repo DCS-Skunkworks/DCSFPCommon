@@ -1,24 +1,28 @@
 ﻿
-// ReSharper disable All
+// // ReSharper disable All
 /*
  * Do not adhere to naming standard in DCS-BIOS code, standard are based on DCS-BIOS json files and byte streamnaming
  */
 
 using System.Diagnostics;
 using DCS_BIOS.EventArgs;
+using DCS_BIOS.misc;
 using DCS_BIOS.StringClasses;
 using NLog;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+using System.Timers;
+
 namespace DCS_BIOS
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Net;
-    using System.Net.Sockets;
-    using System.Text;
-    using System.Threading;
-    using System.Timers;
-
     [Flags]
     public enum DcsBiosNotificationMode
     {
@@ -32,9 +36,7 @@ namespace DCS_BIOS
     /// </summary>
     public class DCSBIOS : IDisposable
     {
-        internal static readonly Logger logger = LogManager.GetCurrentClassLogger();
-        //public delegate void DcsDataReceivedEventHandler(byte[] bytes);
-        //public event DcsDataReceivedEventHandler OnDcsDataReceived;
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         private static DCSBIOS _dcsBIOSInstance;
 
@@ -44,7 +46,7 @@ namespace DCS_BIOS
         private UdpClient _udpReceiveClient;
         private UdpClient _udpSendClient;
         private Thread _dcsbiosListeningThread;
-        private System.Timers.Timer _udpReceiveThrottleTimer = new(10) { AutoReset = true }; //Throttle UDP receive every 10 ms in case nothing is available
+        private readonly System.Timers.Timer _udpReceiveThrottleTimer = new(10) { AutoReset = true }; //Throttle UDP receive every 10 ms in case nothing is available
         private AutoResetEvent _udpReceiveThrottleAutoResetEvent = new(false);
         public string ReceiveFromIpUdp { get; set; } = "239.255.50.10";
         public string SendToIpUdp { get; set; } = "127.0.0.1";
@@ -57,11 +59,13 @@ namespace DCS_BIOS
         *************************
         ************************/
 
+        private readonly Channel<string> _dcsbiosCommandsChannel = Channel.CreateUnbounded<string>();
+        private AutoResetEvent _dcsbiosCommandWaitingResetEvent = new(false);
+
         private readonly object _lockExceptionObject = new();
         private Exception _lastException;
         private DCSBIOSProtocolParser _dcsProtocolParser;
         private readonly DcsBiosNotificationMode _dcsBiosNotificationMode;
-        private readonly object _lockObjectForSendingData = new();
         private volatile bool _isRunning;
         public bool IsRunning
         {
@@ -111,7 +115,7 @@ namespace DCS_BIOS
                 Shutdown();
             }
         }
-        
+
         public void Startup()
         {
             try
@@ -122,6 +126,10 @@ namespace DCS_BIOS
                 }
 
                 _udpReceiveThrottleAutoResetEvent = new(false);
+
+                _dcsbiosCommandWaitingResetEvent = new(false);
+
+                _ = Task.Run(AsyncSendCommands);
 
                 _dcsProtocolParser = DCSBIOSProtocolParser.GetParser();
 
@@ -149,7 +157,7 @@ namespace DCS_BIOS
             catch (Exception ex)
             {
                 SetLastException(ex);
-                logger.Error(ex, "DCSBIOS.Startup()");
+                Logger.Error(ex, "DCSBIOS.Startup()");
                 if (_udpReceiveClient != null && _udpReceiveClient.Client.Connected)
                 {
                     _udpReceiveClient.Close();
@@ -168,6 +176,11 @@ namespace DCS_BIOS
             try
             {
                 _isRunning = false;
+
+                _dcsbiosCommandWaitingResetEvent?.Set();
+                _dcsbiosCommandWaitingResetEvent?.Close();
+                _dcsbiosCommandWaitingResetEvent?.Dispose();
+                _dcsbiosCommandWaitingResetEvent = null;
 
                 _udpReceiveThrottleTimer.Stop();
 
@@ -191,7 +204,7 @@ namespace DCS_BIOS
             catch (Exception ex)
             {
                 SetLastException(ex);
-                logger.Error(ex, "DCSBIOS.Shutdown()");
+                Logger.Error(ex, "DCSBIOS.Shutdown()");
             }
         }
 
@@ -236,7 +249,7 @@ namespace DCS_BIOS
                 if (!ex.Message.Contains("WSACancelBlockingCall"))
                 {
                     SetLastException(ex);
-                    logger.Error(ex, "DCSBIOS.ReceiveData()");
+                    Logger.Error(ex, "DCSBIOS.ReceiveData()");
                 }
             }
         }
@@ -245,52 +258,6 @@ namespace DCS_BIOS
         {
             return _dcsBIOSInstance;
         }
-
-        public static int Send(string stringData)
-        {
-            Debug.WriteLine($"Sending command : {stringData}");
-            return _dcsBIOSInstance.SendDataFunction(stringData);
-        }
-
-        public static void Send(string[] stringArray)
-        {
-            if (stringArray != null)
-            {
-                Send(stringArray.ToList());
-            }
-        }
-
-        public static void Send(List<string> stringList)
-        {
-            if (stringList != null)
-            {
-                stringList.ForEach(s => _dcsBIOSInstance.SendDataFunction(s));
-            }
-        }
-
-        public int SendDataFunction(string stringData)
-        {
-            var result = 0;
-            lock (_lockObjectForSendingData)
-            {
-                try
-                {
-                    //byte[] bytes = _iso8859_1.GetBytes(stringData);
-                    var unicodeBytes = Encoding.Unicode.GetBytes(stringData);
-                    var asciiBytes = new List<byte>(stringData.Length);
-                    asciiBytes.AddRange(Encoding.Convert(Encoding.Unicode, Encoding.ASCII, unicodeBytes));
-                    result = _udpSendClient.Send(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
-                    //result = _udpSendClient.Send(bytes, bytes.Length, _ipEndPointSender);
-                }
-                catch (Exception ex)
-                {
-                    SetLastException(ex);
-                    logger.Error(ex, "DCSBIOS.SendDataFunction()");
-                }
-            }
-            return result;
-        }
-
         private void SetLastException(Exception ex)
         {
             try
@@ -299,7 +266,7 @@ namespace DCS_BIOS
                 {
                     return;
                 }
-                logger.Error(ex, "Via DCSBIOS.SetLastException()");
+                Logger.Error(ex, "Via DCSBIOS.SetLastException()");
                 var message = ex.GetType() + Environment.NewLine + ex.Message + Environment.NewLine + ex.StackTrace;
                 lock (_lockExceptionObject)
                 {
@@ -331,6 +298,85 @@ namespace DCS_BIOS
             lock (_lockExceptionObject)
             {
                 return _lastException != null;
+            }
+        }
+
+
+
+        public static async Task Send(string stringData)
+        {
+            await _dcsBIOSInstance.QueueDCSBIOSCommand(stringData);
+        }
+
+        public static async Task Send(string[] stringArray)
+        {
+            if (stringArray != null)
+            {
+                await Send(stringArray.ToList());
+            }
+        }
+
+        public static async Task Send(List<string> stringList)
+        {
+            if (stringList != null)
+            {
+                foreach (var command in stringList)
+                {
+                    await _dcsBIOSInstance.QueueDCSBIOSCommand(command);
+                }
+            }
+        }
+
+        private object _lockObject = new();
+        private async Task QueueDCSBIOSCommand(string dcsbiosCommand)
+        {
+            if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
+
+            var cts = new CancellationTokenSource(DCSBIOSConstants.MS100);
+            await _dcsbiosCommandsChannel.Writer.WriteAsync(dcsbiosCommand, cts.Token);
+
+            lock (_lockObject)
+            {
+                _dcsbiosCommandWaitingResetEvent.Set();
+            }
+        }
+
+        private async Task AsyncSendCommands()
+        {
+            while (true)
+            {
+                try
+                {
+                    _dcsbiosCommandWaitingResetEvent.WaitOne();
+
+                    if (!_isRunning) break;
+
+                    var cts = new CancellationTokenSource(DCSBIOSConstants.MS100);
+                    var dcsbiosCommand = await _dcsbiosCommandsChannel.Reader.ReadAsync(cts.Token);
+
+                    if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
+
+                    Debug.WriteLine($"Sending command : {dcsbiosCommand}");
+
+                    var unicodeBytes = Encoding.Unicode.GetBytes(dcsbiosCommand);
+                    var asciiBytes = new List<byte>(dcsbiosCommand.Length);
+                    asciiBytes.AddRange(Encoding.Convert(Encoding.Unicode, Encoding.ASCII, unicodeBytes));
+                    await _udpSendClient.SendAsync(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
+
+                    BIOSEventHandler.DCSBIOSCommandWasSent(dcsbiosCommand);
+                }
+                catch (OperationCanceledException e)
+                {
+                    Logger.Error("DCS-BIOS.AsyncSendCommands failed => {0}", e);
+                }
+                catch (IOException e)
+                {
+                    Logger.Error("DCS-BIOS.AsyncSendCommands failed => {0}", e);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error("DCS-BIOS.AsyncSendCommands failed => {0}", e);
+                }
             }
         }
     }

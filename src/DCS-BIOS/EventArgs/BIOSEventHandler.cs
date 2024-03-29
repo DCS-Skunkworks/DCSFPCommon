@@ -132,5 +132,31 @@ namespace DCS_BIOS.EventArgs
         {
             OnDCSBIOSStringReceived?.Invoke(sender, new DCSBIOSStringDataEventArgs { Address = address, StringData = data });
         }
+
+        /*
+         * For listening on what DCS-BIOS commands are sent.
+         */
+        public delegate void DCSBIOSCommandSent(DCSBIOSCommandEventArgs e);
+        public static event DCSBIOSCommandSent OnDCSBIOSCommandSent;
+
+        public static bool OnDCSBIOSCommandSentEventSubscribed()
+        {
+            return OnDCSBIOSCommandSent != null && OnDCSBIOSCommandSent.GetInvocationList().Length > 0;
+        }
+
+        public static void AttachCommandSentListener(IDCSBiosCommandListener commandListener)
+        {
+            OnDCSBIOSCommandSent += commandListener.DCSBIOSCommandSent;
+        }
+
+        public static void DetachCommandSentListener(IDCSBiosCommandListener commandListener)
+        {
+            OnDCSBIOSCommandSent -= commandListener.DCSBIOSCommandSent;
+        }
+
+        public static void DCSBIOSCommandWasSent(string command)
+        {
+            OnDCSBIOSCommandSent?.Invoke(new DCSBIOSCommandEventArgs { Command = command });
+        }
     }
 }
