@@ -154,9 +154,9 @@ namespace DCS_BIOS.EventArgs
             OnDCSBIOSCommandSent -= commandListener.DCSBIOSCommandSent;
         }
 
-        public static void DCSBIOSCommandWasSent(string command)
+        public static void DCSBIOSCommandWasSent(string sender, string command)
         {
-            OnDCSBIOSCommandSent?.Invoke(new DCSBIOSCommandEventArgs { Command = command });
+            OnDCSBIOSCommandSent?.Invoke(new DCSBIOSCommandEventArgs { Sender = sender, Command = command });
         }
     }
 }

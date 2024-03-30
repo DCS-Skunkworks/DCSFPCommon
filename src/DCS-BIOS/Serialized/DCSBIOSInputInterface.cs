@@ -64,7 +64,7 @@ namespace DCS_BIOS.Serialized
 
         public async Task SendCommand()
         {
-            await DCSBIOS.SendAsync(GetDCSBIOSCommand());
+            await DCSBIOS.SendAsync("DCSBIOSInputInterface", GetDCSBIOSCommand());
         }
 
         public int Delay { get; set; }
