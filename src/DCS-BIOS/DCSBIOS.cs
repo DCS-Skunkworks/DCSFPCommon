@@ -304,6 +304,11 @@ namespace DCS_BIOS
             }
         }
 
+        public static async Task SendAsync(string stringData)
+        {
+            await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(null, stringData);
+        }
+
         public static async Task SendAsync(string sender, string stringData)
         {
             await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(sender, stringData);
