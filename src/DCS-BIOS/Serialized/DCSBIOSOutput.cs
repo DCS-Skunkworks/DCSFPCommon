@@ -1,4 +1,5 @@
-﻿using DCS_BIOS.Json;
+﻿using System.Diagnostics;
+using DCS_BIOS.Json;
 using DCS_BIOS.StringClasses;
 
 
@@ -196,6 +197,11 @@ namespace DCS_BIOS.Serialized
         public bool UIntValueHasChanged(uint address, uint data)
         {
             _lockObject ??= new object();
+
+            /*if (address == 0x1186 && Mask == 0x0300)
+            {
+                Debug.WriteLine(GetUIntValue(data));
+            }*/
 
             lock (_lockObject)
             {
