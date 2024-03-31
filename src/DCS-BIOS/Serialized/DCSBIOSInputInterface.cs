@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using ClassLibraryCommon;
 using DCS_BIOS.Json;
 
@@ -62,9 +61,9 @@ namespace DCS_BIOS.Serialized
             return command;
         }
 
-        public async Task SendCommand()
+        public void SendCommand()
         {
-            await DCSBIOS.SendAsync("DCSBIOSInputInterface", GetDCSBIOSCommand());
+            DCSBIOS.Send("DCSBIOSInputInterface", GetDCSBIOSCommand());
         }
 
         public int Delay { get; set; }

@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace DCS_BIOS.Interfaces
+﻿namespace DCS_BIOS.Interfaces
 {
     using EventArgs;
 
