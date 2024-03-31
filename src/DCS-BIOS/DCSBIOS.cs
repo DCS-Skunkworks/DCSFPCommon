@@ -128,9 +128,7 @@ namespace DCS_BIOS
                 _udpReceiveThrottleAutoResetEvent = new(false);
 
                 _dcsbiosCommandWaitingResetEvent = new(false);
-
-                _sendThread = new Thread(SendCommands);
-
+                
                 _dcsProtocolParser = DCSBIOSProtocolParser.GetParser();
 
                 _ipEndPointReceiverUdp = new IPEndPoint(IPAddress.Any, ReceivePortUdp);
@@ -151,6 +149,10 @@ namespace DCS_BIOS
                 _dcsbiosListeningThread = new Thread(ReceiveDataUdp);
 
                 _isRunning = true;
+                
+                _sendThread = new Thread(SendCommands);
+                _sendThread.Start();
+
                 _dcsProtocolParser.Startup();
                 _dcsbiosListeningThread.Start();
             }
@@ -332,11 +334,11 @@ namespace DCS_BIOS
             }
         }
         
-        private void QueueDCSBIOSCommand(string sender, string dcsbiosCommand)
+        private void QueueDCSBIOSCommand(string sender, string command)
         {
-            if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
+            if (command == null || command.Trim().Length == 0) return;
 
-            var tuple = new Tuple<string, string>(sender, dcsbiosCommand);
+            var tuple = new Tuple<string, string>(sender, command);
             _dcsbiosCommandsQueue.Enqueue(tuple);
 
             _dcsbiosCommandWaitingResetEvent.Set();
