@@ -164,7 +164,7 @@ namespace DCS_BIOS
         public void AddArray(byte[] bytes)
         {
             _arraysToProcess.Enqueue(bytes);
-            _autoResetEvent.Set();
+            _autoResetEvent?.Set();
         }
 
         private bool IsBroadcastable(uint address)
