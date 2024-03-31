@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using DCS_BIOS.EventArgs;
 using DCS_BIOS.Interfaces;
 using NLog;
@@ -22,6 +23,7 @@ namespace DCS_BIOS.StringClasses
         private readonly object _stringsLock = new();
         private readonly Encoding _iso88591 = Encoding.GetEncoding("ISO-8859-1");
         //private readonly uint _debugAddress = 10244; //->10251 Mi-8MT R863, Frequency
+        private const int WAIT_FOR_LOCK_SECONDS = 5;
 
         public DCSBIOSStringListener()
         {
@@ -36,21 +38,21 @@ namespace DCS_BIOS.StringClasses
 
         public void AddStringAddress(uint address, int length)
         {
-            lock (_stringsLock)
+            var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(WAIT_FOR_LOCK_SECONDS));
+            if (!lockAcquired) return;
+
+            if (_dcsBiosStrings.Any(o => o.Key == address) == false)
             {
-                if (_dcsBiosStrings.Any(o => o.Key == address) == false)
-                {
-                    _dcsBiosStrings.Add(new KeyValuePair<uint, DCSBIOSString>(address, new DCSBIOSString(address, length)));
-                }
+                _dcsBiosStrings.Add(new KeyValuePair<uint, DCSBIOSString>(address, new DCSBIOSString(address, length)));
             }
         }
 
         public void RemoveStringAddress(uint address)
         {
-            lock (_stringsLock)
-            {
-                _dcsBiosStrings.RemoveAll(o => o.Key == address);
-            }
+            var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(WAIT_FOR_LOCK_SECONDS));
+            if (!lockAcquired) return;
+
+            _dcsBiosStrings.RemoveAll(o => o.Key == address);
         }
 
         private void UpdateStrings(uint address, uint data)
@@ -65,62 +67,61 @@ namespace DCS_BIOS.StringClasses
             {
                 //end of update cycle, clear all existing values.
                 //broadcast every string now
-                lock (_stringsLock)
+                var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(1));
+                if (!lockAcquired) return;
+
+                foreach (var kvp in _dcsBiosStrings.Where(kvp => kvp.Value.IsComplete))
                 {
-                    foreach (var kvp in _dcsBiosStrings.Where(kvp => kvp.Value.IsComplete))
-                    {
-                        //Once it has been "complete" one time then just keep sending it each time, do not reset it as there will be no updates from DCS-BIOS unless cockpit value changes.
-                        BIOSEventHandler.DCSBIOSStringAvailable(this, kvp.Value.Address, kvp.Value.StringValue);
-                    }
+                    //Once it has been "complete" one time then just keep sending it each time, do not reset it as there will be no updates from DCS-BIOS unless cockpit value changes.
+                    BIOSEventHandler.DCSBIOSStringAvailable(this, kvp.Value.Address, kvp.Value.StringValue);
                 }
             }
             else
             {
-                lock (_stringsLock)
+                var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(1));
+                if (!lockAcquired) return;
+
+                foreach (var kvp in _dcsBiosStrings.Where(o => o.Value.IsMatch(address)))
                 {
-                    foreach (var kvp in _dcsBiosStrings)
+                    try
                     {
-                        if (!kvp.Value.IsMatch(address)) continue;
+                        //Send "AB"
+                        //0x4241
+                        //41 = A
+                        //42 = B
+                        var hex = Convert.ToString(data, 16);
 
-                        try
+                        //Debug.WriteLine(hex);
+                        //See comment below.
+                        if (hex.Length < 2)
                         {
-                            //Send "AB"
-                            //0x4241
-                            //41 = A
-                            //42 = B
-                            var hex = Convert.ToString(data, 16);
+                            /*
+                                 * Remove address as it doesn't contain data. Maybe a dynamic string and right now the string is shorter
+                                 * than the memory space reserved.
+                                 * Now if the string
+                                 */
+                            kvp.Value.RemoveAddress(address);
+                            return;
+                        }
 
-                            //Debug.WriteLine(hex);
-                            //See comment below.
-                            if (hex.Length < 2)
-                            {
-                                /*
-                                     * Remove address as it doesn't contain data. Maybe a dynamic string and right now the string is shorter
-                                     * than the memory space reserved.
-                                     * Now if the string
-                                     */
-                                kvp.Value.RemoveAddress(address);
-                                return;
-                            }
+                        //Little Endian !
+                        byte[] secondByte;
+                        byte[] firstByte;
+                        var secondChar = string.Empty;
+                        var firstChar = string.Empty;
 
-                            //Little Endian !
-                            byte[] secondByte;
-                            byte[] firstByte;
-                            var secondChar = string.Empty;
-                            var firstChar = string.Empty;
-
-                            switch (hex.Length)
-                            {
-                                case 2:
+                        switch (hex.Length)
+                        {
+                            case 2:
                                 {
                                     secondByte = new[] { Convert.ToByte(hex.Substring(0, 2), 16) };
                                     secondChar = _iso88591.GetString(secondByte);
                                     firstChar = "";
                                     break;
                                 }
-                                case 3:
+                            case 3:
                                 {
-                                    //this is really ugly, will it work ?? keep getting 0x730 from MI-8 R863 where I would except last digit (uneven 7 long frequency)
+                                    //this is hideous, will it work ?? keep getting 0x730 from MI-8 R863 where I would except last digit (uneven 7 long frequency)
                                     //so let's try and just ignore the for number, in this case the 7.
                                     //28.04.2020 JDA
                                     secondByte = new[] { Convert.ToByte(hex.Substring(0, 2), 16) };
@@ -129,7 +130,7 @@ namespace DCS_BIOS.StringClasses
                                     firstChar = _iso88591.GetString(firstByte);
                                     break;
                                 }
-                                case 4:
+                            case 4:
                                 {
                                     secondByte = new[] { Convert.ToByte(hex.Substring(0, 2), 16) };
                                     secondChar = _iso88591.GetString(secondByte);
@@ -137,22 +138,20 @@ namespace DCS_BIOS.StringClasses
                                     firstChar = _iso88591.GetString(firstByte);
                                     break;
                                 }
-                            }
-
-
-                            if (!string.IsNullOrEmpty(firstChar))
-                            {
-                                kvp.Value.Add(address, firstChar, secondChar);
-                            }
-                            else
-                            {
-                                kvp.Value.Add(address, secondChar);
-                            }
                         }
-                        catch (Exception ex)
+                        
+                        if (!string.IsNullOrEmpty(firstChar))
                         {
-                            Logger.Error(ex, $"**********Received (0x{data:X}");
+                            kvp.Value.Add(address, firstChar, secondChar);
                         }
+                        else
+                        {
+                            kvp.Value.Add(address, secondChar);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex, $"**********Received (0x{data:X}");
                     }
                 }
             }

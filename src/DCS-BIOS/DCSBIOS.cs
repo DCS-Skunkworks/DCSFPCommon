@@ -6,10 +6,10 @@
 
 using System.Diagnostics;
 using DCS_BIOS.EventArgs;
-using DCS_BIOS.misc;
 using DCS_BIOS.StringClasses;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,8 +17,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 using System.Timers;
 
 namespace DCS_BIOS
@@ -59,7 +57,7 @@ namespace DCS_BIOS
         *************************
         ************************/
 
-        private readonly Channel<Tuple<string,string>> _dcsbiosCommandsChannel = Channel.CreateUnbounded<Tuple<string, string>>();
+        private readonly ConcurrentQueue<Tuple<string, string>> _dcsbiosCommandsQueue = new ();
         private AutoResetEvent _dcsbiosCommandWaitingResetEvent = new(false);
 
         private readonly object _lockExceptionObject = new();
@@ -67,8 +65,7 @@ namespace DCS_BIOS
         private DCSBIOSProtocolParser _dcsProtocolParser;
         private readonly DcsBiosNotificationMode _dcsBiosNotificationMode;
         private volatile bool _isRunning;
-
-        private readonly object _queueLockObject = new();
+        private Thread _sendThread;
 
         public bool IsRunning
         {
@@ -132,7 +129,7 @@ namespace DCS_BIOS
 
                 _dcsbiosCommandWaitingResetEvent = new(false);
 
-                _ = Task.Run(SendCommandsAsync);
+                _sendThread = new Thread(SendCommands);
 
                 _dcsProtocolParser = DCSBIOSProtocolParser.GetParser();
 
@@ -184,6 +181,8 @@ namespace DCS_BIOS
                 _dcsbiosCommandWaitingResetEvent?.Close();
                 _dcsbiosCommandWaitingResetEvent?.Dispose();
                 _dcsbiosCommandWaitingResetEvent = null;
+
+                _sendThread = null;
 
                 _udpReceiveThrottleTimer.Stop();
 
@@ -304,86 +303,110 @@ namespace DCS_BIOS
             }
         }
 
-        public static async Task SendAsync(string stringData)
+
+        public static void Send(string stringData)
         {
-            await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(null, stringData);
+            _dcsBIOSInstance.QueueDCSBIOSCommand(null, stringData);
         }
 
-        public static async Task SendAsync(string sender, string stringData)
+        public static void Send(string sender, string stringData)
         {
-            await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(sender, stringData);
+            _dcsBIOSInstance.QueueDCSBIOSCommand(sender, stringData);
         }
 
-        public static async Task SendAsync(string sender, string[] stringArray)
+        public static void Send(string sender, string[] stringArray)
         {
             if (stringArray != null)
             {
-                await SendAsync(sender, stringArray.ToList());
+                Send(sender, stringArray.ToList());
             }
         }
 
-        public static async Task SendAsync(string sender, List<string> stringList)
+        public static void Send(string sender, List<string> stringList)
         {
-            if (stringList != null)
+            if (stringList == null) return;
+
+            foreach (var command in stringList)
             {
-                foreach (var command in stringList)
-                {
-                    await _dcsBIOSInstance.QueueDCSBIOSCommandAsync(sender, command);
-                }
+                _dcsBIOSInstance.QueueDCSBIOSCommand(sender, command);
             }
         }
         
-        private async Task QueueDCSBIOSCommandAsync(string sender, string dcsbiosCommand)
+        private void QueueDCSBIOSCommand(string sender, string dcsbiosCommand)
         {
             if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
 
             var tuple = new Tuple<string, string>(sender, dcsbiosCommand);
-            var cts = new CancellationTokenSource(DCSBIOSConstants.MS100);
-            await _dcsbiosCommandsChannel.Writer.WriteAsync(tuple, cts.Token);
+            _dcsbiosCommandsQueue.Enqueue(tuple);
 
-            lock (_queueLockObject)
-            {
-                _dcsbiosCommandWaitingResetEvent.Set();
-            }
+            _dcsbiosCommandWaitingResetEvent.Set();
         }
 
-        private async Task SendCommandsAsync()
+        private void SendCommand(string sender, string command)
         {
-            while (true)
+                try
+                {
+                    if (command == null || command.Trim().Length == 0) return;
+
+                    Debug.WriteLine($"Sending command : {command}");
+
+                    var unicodeBytes = Encoding.Unicode.GetBytes(command);
+                    var asciiBytes = new List<byte>(command.Length);
+                    asciiBytes.AddRange(Encoding.Convert(Encoding.Unicode, Encoding.ASCII, unicodeBytes));
+                    _udpSendClient.Send(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
+
+                    BIOSEventHandler.DCSBIOSCommandWasSent(sender, command);
+                }
+                catch (OperationCanceledException e)
+                {
+                    Logger.Error("DCS-BIOS.SendCommand failed => {0}", e);
+                }
+                catch (IOException e)
+                {
+                    Logger.Error("DCS-BIOS.SendCommand failed => {0}", e);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error("DCS-BIOS.SendCommand failed => {0}", e);
+                }
+        }
+
+        private void SendCommands()
+        {
+            while (_isRunning)
             {
                 try
                 {
                     _dcsbiosCommandWaitingResetEvent.WaitOne();
+                    
+                    _dcsbiosCommandsQueue.TryDequeue(out var tuple);
 
-                    if (!_isRunning) break;
-
-                    var cts = new CancellationTokenSource(DCSBIOSConstants.MS100);
-                    var tuple = await _dcsbiosCommandsChannel.Reader.ReadAsync(cts.Token);
+                    if (tuple == null) continue;
 
                     var sender = tuple.Item1;
                     var dcsbiosCommand = tuple.Item2;
                     if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
 
-                    Debug.WriteLine($"Sending command : {dcsbiosCommand}");
+                    Debug.WriteLine($"Sending command (async) : {dcsbiosCommand}");
 
                     var unicodeBytes = Encoding.Unicode.GetBytes(dcsbiosCommand);
                     var asciiBytes = new List<byte>(dcsbiosCommand.Length);
                     asciiBytes.AddRange(Encoding.Convert(Encoding.Unicode, Encoding.ASCII, unicodeBytes));
-                    await _udpSendClient.SendAsync(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
+                    _udpSendClient.Send(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
 
                     BIOSEventHandler.DCSBIOSCommandWasSent(sender, dcsbiosCommand);
                 }
                 catch (OperationCanceledException e)
                 {
-                    Logger.Error("DCS-BIOS.AsyncSendCommands failed => {0}", e);
+                    Logger.Error("DCS-BIOS.SendCommands failed => {0}", e);
                 }
                 catch (IOException e)
                 {
-                    Logger.Error("DCS-BIOS.AsyncSendCommands failed => {0}", e);
+                    Logger.Error("DCS-BIOS.SendCommands failed => {0}", e);
                 }
                 catch (Exception e)
                 {
-                    Logger.Error("DCS-BIOS.AsyncSendCommands failed => {0}", e);
+                    Logger.Error("DCS-BIOS.SendCommands failed => {0}", e);
                 }
             }
         }

@@ -95,7 +95,7 @@ namespace DCS_BIOS
         public void Shutdown()
         {
             _shutdown = true;
-            _autoResetEvent.Set();
+            _autoResetEvent?.Set();
         }
 
         private void ThreadedProcessArrays()
