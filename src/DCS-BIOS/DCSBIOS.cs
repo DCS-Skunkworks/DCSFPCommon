@@ -360,7 +360,8 @@ namespace DCS_BIOS
                 try
                 {
                     _dcsbiosCommandWaitingResetEvent.WaitOne();
-                    
+                    if (!_isRunning) break;
+
                     _dcsbiosCommandsQueue.TryDequeue(out var tuple);
 
                     if (tuple == null) continue;
