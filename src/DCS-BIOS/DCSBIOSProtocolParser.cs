@@ -73,6 +73,7 @@ namespace DCS_BIOS
             if (disposing)
             {
                 // dispose managed resources
+                _autoResetEvent?.Set();
                 _autoResetEvent?.Dispose();
                 _autoResetEvent = null;
             }
@@ -88,6 +89,7 @@ namespace DCS_BIOS
         public void Startup()
         {
             _shutdown = false;
+            _autoResetEvent = new (false);
             _processingThread = new Thread(ProcessArraysThread);
             _processingThread.Start();
         }
@@ -96,7 +98,8 @@ namespace DCS_BIOS
         {
             _shutdown = true;
             _autoResetEvent?.Set();
-            _processingThread.Join();
+            _autoResetEvent?.Dispose();
+            _autoResetEvent = null;
         }
 
         public void AddArray(byte[] bytes)
