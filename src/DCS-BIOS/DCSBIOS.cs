@@ -62,6 +62,7 @@ namespace DCS_BIOS
 
         private readonly object _lockExceptionObject = new();
         private Exception _lastException;
+        private List<string> _previousExceptionsLogged = new();
         private DCSBIOSProtocolParser _dcsProtocolParser;
         private readonly DcsBiosNotificationMode _dcsBiosNotificationMode;
         private volatile bool _isRunning;
@@ -229,21 +230,29 @@ namespace DCS_BIOS
                         {
                             BIOSEventHandler.ConnectionActive(this);
                             var byteData = _udpReceiveClient.Receive(ref _ipEndPointReceiverUdp);
-                            if ((_dcsBiosNotificationMode & DcsBiosNotificationMode.Parse) == DcsBiosNotificationMode.Parse)
+                            if ((_dcsBiosNotificationMode & DcsBiosNotificationMode.Parse) ==
+                                DcsBiosNotificationMode.Parse)
                             {
                                 _dcsProtocolParser.AddArray(byteData);
                             }
-                            if ((_dcsBiosNotificationMode & DcsBiosNotificationMode.PassThrough) == DcsBiosNotificationMode.PassThrough)
+
+                            if ((_dcsBiosNotificationMode & DcsBiosNotificationMode.PassThrough) ==
+                                DcsBiosNotificationMode.PassThrough)
                             {
-                                BIOSEventHandler.AsyncDCSBIOSBulkDataAvailable(this, byteData);
+                                BIOSEventHandler.DCSBIOSBulkDataAvailable(this, byteData);
                             }
+
                             continue;
                         }
+
                         _udpReceiveThrottleAutoResetEvent.WaitOne(); // Minimizes CPU hit
                     }
-                    catch (SocketException)
+                    catch (SocketException se)
                     {
-                        continue;
+                        if (_previousExceptionsLogged.Any(o => o == se.Message)) return;
+
+                        _previousExceptionsLogged.Add(se.Message);
+                        Logger.Error(se, "DCS-BIOS ReceiveDataUdp()");
                     }
                 }
 
@@ -344,35 +353,6 @@ namespace DCS_BIOS
             _dcsbiosCommandWaitingResetEvent.Set();
         }
 
-        private void SendCommand(string sender, string command)
-        {
-                try
-                {
-                    if (command == null || command.Trim().Length == 0) return;
-
-                    Debug.WriteLine($"Sending command : {command}");
-
-                    var unicodeBytes = Encoding.Unicode.GetBytes(command);
-                    var asciiBytes = new List<byte>(command.Length);
-                    asciiBytes.AddRange(Encoding.Convert(Encoding.Unicode, Encoding.ASCII, unicodeBytes));
-                    _udpSendClient.Send(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
-
-                    BIOSEventHandler.DCSBIOSCommandWasSent(sender, command);
-                }
-                catch (OperationCanceledException e)
-                {
-                    Logger.Error("DCS-BIOS.SendCommand failed => {0}", e);
-                }
-                catch (IOException e)
-                {
-                    Logger.Error("DCS-BIOS.SendCommand failed => {0}", e);
-                }
-                catch (Exception e)
-                {
-                    Logger.Error("DCS-BIOS.SendCommand failed => {0}", e);
-                }
-        }
-
         private void SendCommands()
         {
             while (_isRunning)
@@ -389,7 +369,7 @@ namespace DCS_BIOS
                     var dcsbiosCommand = tuple.Item2;
                     if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
 
-                    Debug.WriteLine($"Sending command (async) : {dcsbiosCommand}");
+                    Debug.WriteLine($"Sending command : {dcsbiosCommand}");
 
                     var unicodeBytes = Encoding.Unicode.GetBytes(dcsbiosCommand);
                     var asciiBytes = new List<byte>(dcsbiosCommand.Length);
