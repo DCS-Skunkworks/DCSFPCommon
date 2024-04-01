@@ -198,11 +198,6 @@ namespace DCS_BIOS.Serialized
         {
             _lockObject ??= new object();
 
-            /*if (address == 0x1186 && Mask == 0x0300)
-            {
-                Debug.WriteLine(GetUIntValue(data));
-            }*/
-
             lock (_lockObject)
             {
                 if (address != Address)
