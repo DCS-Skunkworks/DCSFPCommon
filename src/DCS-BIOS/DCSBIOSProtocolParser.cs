@@ -37,10 +37,10 @@ namespace DCS_BIOS
     /// </summary>
     internal class DCSBIOSProtocolParser : IDisposable
     {
-        internal static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        internal static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         private readonly List<string> _errorsLogged = new(10);
-        
+
         private DCSBiosStateEnum _state;
         private uint _address;
         private uint _count;
@@ -52,7 +52,7 @@ namespace DCS_BIOS
         public static DCSBIOSProtocolParser DCSBIOSProtocolParserSO;
         private AutoResetEvent _autoResetEvent = new(false);
 
-        private readonly ConcurrentQueue<byte[]> _arraysToProcess = new();
+        private readonly ConcurrentQueue<byte[]> _arrayQueue = new();
         private Thread _processingThread;
 
         private DCSBIOSProtocolParser()
@@ -66,7 +66,7 @@ namespace DCS_BIOS
             _listOfAddressesToBroascast.Add(DCSBIOSConstants.META_MODULE_START_ADDRESS); // MetadataStart
             _listOfAddressesToBroascast.Add(DCSBIOSConstants.META_MODULE_END_ADDRESS); // MetadataEnd
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             _shutdown = true;
@@ -84,11 +84,11 @@ namespace DCS_BIOS
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         public void Startup()
         {
             _shutdown = false;
-            _processingThread = new Thread(ThreadedProcessArrays);
+            _processingThread = new Thread(ProcessArraysThread);
             _processingThread.Start();
         }
 
@@ -96,25 +96,28 @@ namespace DCS_BIOS
         {
             _shutdown = true;
             _autoResetEvent?.Set();
+            _processingThread.Join();
         }
 
-        private void ThreadedProcessArrays()
+        public void AddArray(byte[] bytes)
+        {
+            if (_shutdown == true) return;
+
+            _arrayQueue.Enqueue(bytes);
+            _autoResetEvent.Set();
+        }
+
+        private void ProcessArraysThread()
         {
             try
             {
-                var interval = 0;
                 while (!_shutdown)
                 {
                     try
                     {
-                        if (interval >= 100)
-                        {
-                            //Debug.Print("_arraysToProcess.Count = " + _arraysToProcess.Count);
-                            interval = 0;
-                        }
-                        
                         byte[] array = null;
-                        while (_arraysToProcess.TryDequeue(out array))
+                        
+                        while (_arrayQueue.TryDequeue(out array))
                         {
                             if (array != null)
                             {
@@ -124,19 +127,18 @@ namespace DCS_BIOS
                                 }
                             }
                         }
-                        
-                        interval++;
                     }
                     catch (Exception ex)
                     {
-                        logger.Error(ex, $"DCSBIOSProtocolParser.ProcessArrays(), arrays to process : {_arraysToProcess.Count}");
+                        Logger.Error(ex, $"DCSBIOSProtocolParser.ProcessArrays(), arrays to process : {_arrayQueue.Count}");
                     }
-                    _autoResetEvent?.WaitOne();
+
+                    _autoResetEvent.WaitOne();
                 }
             }
             catch (Exception ex)
             {
-                logger.Error(ex, $"DCSBIOSProtocolParser.ProcessArrays(), arrays to process : {_arraysToProcess.Count}");
+                Logger.Error(ex, $"DCSBIOSProtocolParser.ProcessArrays(), arrays to process : {_arrayQueue.Count}");
             }
         }
 
@@ -159,12 +161,6 @@ namespace DCS_BIOS
                 DCSBIOSProtocolParserSO = new DCSBIOSProtocolParser();
             }
             return DCSBIOSProtocolParserSO;
-        }
-
-        public void AddArray(byte[] bytes)
-        {
-            _arraysToProcess.Enqueue(bytes);
-            _autoResetEvent?.Set();
         }
 
         private bool IsBroadcastable(uint address)
@@ -213,27 +209,24 @@ namespace DCS_BIOS
                     case DCSBiosStateEnum.DATA_HIGH:
                         _data = (uint)(b << 8) | _data;
                         _count--;
-                        
+
+
                         if (IsBroadcastable(_address))
                         {
                             try
                             {
                                 BIOSEventHandler.DCSBIOSDataAvailable(this, _address, _data);
-
-                                /*if (OnDcsDataAddressValue != null)
-                                {
-                                    Debug.WriteLine("OnDcsDataAddressValue : " + OnDcsDataAddressValue.GetInvocationList().Length);
-                                }*/
                             }
                             catch (Exception ex)
                             {
                                 if (!_errorsLogged.Contains(ex.Message))
                                 {
-                                    logger.Error(ex, "Error in DCS-BIOS stream. This error will be logged *just once*.");
+                                    Logger.Error(ex, "Error in DCS-BIOS stream. This error will be logged *just once*.");
                                     _errorsLogged.Add(ex.Message);
                                 }
                             }
                         }
+
                         _address += 2;
                         if (_count == 0)
                             _state = DCSBiosStateEnum.ADDRESS_LOW;
@@ -261,7 +254,7 @@ namespace DCS_BIOS
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "DCSBIOSProtocolParser.ProcessByte()");
+                Logger.Error(ex, "DCSBIOSProtocolParser.ProcessByte()");
             }
         }
     }

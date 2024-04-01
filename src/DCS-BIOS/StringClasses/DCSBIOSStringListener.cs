@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +7,7 @@ using System.Threading;
 using DCS_BIOS.EventArgs;
 using DCS_BIOS.Interfaces;
 using NLog;
+using Theraot.Collections;
 
 namespace DCS_BIOS.StringClasses
 {
@@ -19,11 +21,9 @@ namespace DCS_BIOS.StringClasses
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-        private readonly List<KeyValuePair<uint, DCSBIOSString>> _dcsBiosStrings = new();
-        private readonly object _stringsLock = new();
+        private readonly ConcurrentDictionary<uint, DCSBIOSString> _dcsBiosStrings = new();
         private readonly Encoding _iso88591 = Encoding.GetEncoding("ISO-8859-1");
         //private readonly uint _debugAddress = 10244; //->10251 Mi-8MT R863, Frequency
-        private const int WAIT_FOR_LOCK_SECONDS = 5;
 
         public DCSBIOSStringListener()
         {
@@ -38,21 +38,18 @@ namespace DCS_BIOS.StringClasses
 
         public void AddStringAddress(uint address, int length)
         {
-            var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(WAIT_FOR_LOCK_SECONDS));
-            if (!lockAcquired) return;
-
             if (_dcsBiosStrings.Any(o => o.Key == address) == false)
             {
-                _dcsBiosStrings.Add(new KeyValuePair<uint, DCSBIOSString>(address, new DCSBIOSString(address, length)));
+                while (!_dcsBiosStrings.TryAdd(address, new DCSBIOSString(address, length)))
+                {
+                    Thread.Sleep(10);
+                }
             }
         }
 
         public void RemoveStringAddress(uint address)
         {
-            var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(WAIT_FOR_LOCK_SECONDS));
-            if (!lockAcquired) return;
-
-            _dcsBiosStrings.RemoveAll(o => o.Key == address);
+            _dcsBiosStrings.RemoveWhere(o => o.Key == address);
         }
 
         private void UpdateStrings(uint address, uint data)
@@ -67,8 +64,6 @@ namespace DCS_BIOS.StringClasses
             {
                 //end of update cycle, clear all existing values.
                 //broadcast every string now
-                var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(1));
-                if (!lockAcquired) return;
 
                 foreach (var kvp in _dcsBiosStrings.Where(kvp => kvp.Value.IsComplete))
                 {
@@ -78,9 +73,6 @@ namespace DCS_BIOS.StringClasses
             }
             else
             {
-                var lockAcquired = Monitor.TryEnter(_stringsLock, TimeSpan.FromSeconds(1));
-                if (!lockAcquired) return;
-
                 foreach (var kvp in _dcsBiosStrings.Where(o => o.Value.IsMatch(address)))
                 {
                     try
@@ -96,10 +88,10 @@ namespace DCS_BIOS.StringClasses
                         if (hex.Length < 2)
                         {
                             /*
-                                 * Remove address as it doesn't contain data. Maybe a dynamic string and right now the string is shorter
-                                 * than the memory space reserved.
-                                 * Now if the string
-                                 */
+                             * Remove address as it doesn't contain data. Maybe a dynamic string and right now the string is shorter
+                             * than the memory space reserved.
+                             * Now if the string
+                             */
                             kvp.Value.RemoveAddress(address);
                             return;
                         }
@@ -139,7 +131,7 @@ namespace DCS_BIOS.StringClasses
                                     break;
                                 }
                         }
-                        
+
                         if (!string.IsNullOrEmpty(firstChar))
                         {
                             kvp.Value.Add(address, firstChar, secondChar);

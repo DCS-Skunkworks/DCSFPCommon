@@ -58,29 +58,6 @@ namespace DCS_BIOS.EventArgs
             OnDcsBulkData?.Invoke(sender, new DCSBIOSBulkDataEventArgs { Data = data });
         }
 
-        public delegate Task AsyncDcsBulkDataEventHandler(object sender, DCSBIOSBulkDataEventArgs e);
-        public static event AsyncDcsBulkDataEventHandler AsyncOnDcsBulkData;
-
-        public static bool OnAsyncDcsBulkDataEventSubscribed()
-        {
-            return AsyncOnDcsBulkData != null && AsyncOnDcsBulkData.GetInvocationList().Length > 0;
-        }
-
-        public static void AttachAsyncBulkDataListener(IAsyncDcsBiosBulkDataListener asyncBulkDataListener)
-        {
-            AsyncOnDcsBulkData += asyncBulkDataListener.AsyncDcsBiosBulkDataReceived;
-        }
-
-        public static void DetachAsyncBulkDataListener(IAsyncDcsBiosBulkDataListener asyncBulkDataListener)
-        {
-            AsyncOnDcsBulkData -= asyncBulkDataListener.AsyncDcsBiosBulkDataReceived;
-        }
-
-        public static void AsyncDCSBIOSBulkDataAvailable(object sender, byte[] data)
-        {
-            AsyncOnDcsBulkData?.Invoke(sender, new DCSBIOSBulkDataEventArgs { Data = data });
-        }
-
         /*
          * Used for listening whether data comes from DCS-BIOS (UI spinning cog wheel for example)
          */
