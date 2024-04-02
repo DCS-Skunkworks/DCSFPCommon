@@ -1,4 +1,5 @@
-﻿using DCS_BIOS.Json;
+﻿using System.Linq;
+using DCS_BIOS.Json;
 using DCS_BIOS.StringClasses;
 
 
@@ -53,7 +54,7 @@ namespace DCS_BIOS.Serialized
         private volatile uint _lastUIntValue = uint.MaxValue;
         private volatile string _lastStringValue = "";
         private bool _uintValueHasChanged;
-        private const string DEFAULT_VARIABLE_CHANGE_VALUE = "3200";
+        private string _defaultVariableChangeValue = "3200";
 
         [NonSerialized] private object _lockObject = new();
 
@@ -112,6 +113,11 @@ namespace DCS_BIOS.Serialized
                 {
                     DCSBiosOutputType = DCSBiosOutputType.None;
                     return;
+                }
+
+                foreach (var dcsbiosControlInput in dcsbiosControl.Inputs.Where(dcsbiosControlInput => dcsbiosControlInput.SuggestedStep is >= 0))
+                {
+                    _defaultVariableChangeValue = dcsbiosControlInput.SuggestedStep.ToString();
                 }
 
                 foreach (var dcsbiosControlOutput in dcsbiosControl.Outputs)
@@ -328,7 +334,7 @@ namespace DCS_BIOS.Serialized
 
         public string GetVariableDefaultCommand(bool inc)
         {
-            var changeValue = inc ? "+" + DEFAULT_VARIABLE_CHANGE_VALUE : "-" + DEFAULT_VARIABLE_CHANGE_VALUE;
+            var changeValue = inc ? "+" + _defaultVariableChangeValue : "-" + _defaultVariableChangeValue;
             return $"{ControlId} {changeValue}\n";
         }
         
