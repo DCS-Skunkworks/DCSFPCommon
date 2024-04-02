@@ -12,6 +12,9 @@ namespace DCS_BIOS.Json
     /// </summary>
     public class DCSBIOSControl
     {
+        private List<DCSBIOSControlInput> _inputs = new();
+
+
         [JsonProperty("category", Required = Required.Default)]
         public string Category { get; set; }
 
@@ -25,11 +28,24 @@ namespace DCS_BIOS.Json
         public string Identifier { get; set; }
 
         [JsonProperty("inputs", Required = Required.Default)]
-        public List<DCSBIOSControlInput> Inputs { get; set; }
-        
+        public List<DCSBIOSControlInput> Inputs
+        {
+            get => _inputs;
+
+            set
+            {
+                _inputs = value;
+
+                foreach (var dcsbiosControlInput in _inputs)
+                {
+                    dcsbiosControlInput.ControlId = Identifier;
+                }
+            }
+        }
+
         [JsonProperty("outputs", Required = Required.Default)]
         public List<DCSBIOSControlOutput> Outputs { get; set; }
-        
+
 
         public bool HasOutput()
         {
