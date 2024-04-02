@@ -328,7 +328,7 @@ namespace DCS_BIOS.Serialized
 
         public string GetVariableCommand(int value)
         {
-            var s = value >= 0 ? "+" + value : "-" + value;
+            var s = value >= 0 ? "+" + value : value.ToString();
             return $"{ControlId} {s}\n";
         }
 
