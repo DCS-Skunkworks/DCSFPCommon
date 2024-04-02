@@ -37,7 +37,7 @@ namespace DCS_BIOS.misc
         public string GetIncCommand()
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.FIXED_STEP) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.FIXED_STEP}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.FIXED_STEP}");
 
             return $"{_controlId} INC\n";
         }
@@ -45,7 +45,7 @@ namespace DCS_BIOS.misc
         public string GetDecCommand()
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.FIXED_STEP) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.FIXED_STEP}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.FIXED_STEP}");
 
             return $"{_controlId} DEC\n";
         }
@@ -53,7 +53,7 @@ namespace DCS_BIOS.misc
         public string GetActionCommand()
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.ACTION) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.ACTION}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.ACTION}");
 
             return $"{_controlId} TOGGLE\n";
         }
@@ -61,7 +61,7 @@ namespace DCS_BIOS.misc
         public string GetSetStateCommand(uint value)
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.SET_STATE) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.SET_STATE}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.SET_STATE}");
 
             return $"{_controlId} {value}\n";
         }
@@ -69,7 +69,7 @@ namespace DCS_BIOS.misc
         public string GetVariableCommand(int value)
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.VARIABLE_STEP) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.VARIABLE_STEP}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.VARIABLE_STEP}");
 
             var s = value > 0 ? "+" + value : value.ToString();
             return $"{_controlId} {s}\n";
@@ -78,7 +78,7 @@ namespace DCS_BIOS.misc
         public string GetVariableCommand(int value, bool decrement)
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.VARIABLE_STEP) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.VARIABLE_STEP}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.VARIABLE_STEP}");
 
             if (decrement && value > 0)
             {
@@ -92,7 +92,7 @@ namespace DCS_BIOS.misc
         public string GetVariableDefaultCommand(bool increment)
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.VARIABLE_STEP) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.VARIABLE_STEP}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.VARIABLE_STEP}");
 
             var changeValue = increment ? "+" + _defaultVariableChangeValue : "-" + _defaultVariableChangeValue;
             return $"{_controlId} {changeValue}\n";
@@ -101,7 +101,7 @@ namespace DCS_BIOS.misc
         public string GetStringCommand(string parameters)
         {
             if (_supportedInterfaces.Any(o => o == DCSBIOSInputType.SET_STRING) == false)
-                throw new ArgumentException($"{_controlId} does not have {DCSBIOSInputType.SET_STRING}");
+                throw new ArgumentException($"DCSBIOSCommand: {_controlId} does not have {DCSBIOSInputType.SET_STRING}");
             
             return $"{_controlId} {parameters}\n";
         }
