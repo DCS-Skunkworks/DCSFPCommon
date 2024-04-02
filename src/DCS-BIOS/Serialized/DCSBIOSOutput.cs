@@ -306,39 +306,6 @@ namespace DCS_BIOS.Serialized
             _specifiedValueUInt = (uint)int.Parse(entries[2]);
         }
 
-        public string GetIncCommand()
-        {
-            return $"{ControlId} INC\n";
-        }
-
-        public string GetDecCommand()
-        {
-            return $"{ControlId} DEC\n";
-        }
-
-        public string GetActionCommand()
-        {
-            return $"{ControlId} TOGGLE\n";
-        }
-
-        public string GetSetStateCommand(uint value)
-        {
-            return $"{ControlId} {value}\n";
-        }
-
-        public string GetVariableCommand(int value)
-        {
-            var s = value >= 0 ? "+" + value : value.ToString();
-            return $"{ControlId} {s}\n";
-        }
-
-        public string GetVariableDefaultCommand(bool inc)
-        {
-            var changeValue = inc ? "+" + _defaultVariableChangeValue : "-" + _defaultVariableChangeValue;
-            return $"{ControlId} {changeValue}\n";
-        }
-        
-
         [JsonProperty("ControlId", Required = Required.Default)]
         public string ControlId { get; set; }
 

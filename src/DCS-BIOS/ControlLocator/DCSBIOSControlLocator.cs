@@ -81,9 +81,25 @@ namespace DCS_BIOS.ControlLocator
             }
         }
 
+        public static DCSBIOSCommand GetCommand(string controlId)
+        {
+            var control = GetControl(controlId);
+            return new DCSBIOSCommand(control);
+        }
+        
         public static DCSBIOSOutput GetDCSBIOSOutput(string controlId, DCSBiosOutputType dcsBiosOutputType)
         {
             return dcsBiosOutputType == DCSBiosOutputType.IntegerType ? GetUIntDCSBIOSOutput(controlId) : GetStringDCSBIOSOutput(controlId);
+        }
+
+
+        public static Tuple<DCSBIOSCommand, DCSBIOSOutput>  GetUIntCommandAndOutput(string controlId)
+        {
+            var control = GetControl(controlId);
+            var command = new DCSBIOSCommand(control);
+            var output = GetUIntDCSBIOSOutput(controlId);
+
+            return new Tuple<DCSBIOSCommand, DCSBIOSOutput>(command, output);
         }
 
         public static DCSBIOSOutput GetUIntDCSBIOSOutput(string controlId)
@@ -107,6 +123,15 @@ namespace DCS_BIOS.ControlLocator
                     throw new Exception($"Check DCS-BIOS version. Failed to create DCSBIOSOutput based on control {controlId} for profile {DCSAircraft.JSONFilename}{Environment.NewLine}{ioe.Message}");
                 }
             }
+        }
+
+        public static Tuple<DCSBIOSCommand, DCSBIOSOutput> GetStringCommandAndOutput(string controlId)
+        {
+            var control = GetControl(controlId);
+            var command = new DCSBIOSCommand(control);
+            var output = GetStringDCSBIOSOutput(controlId);
+
+            return new Tuple<DCSBIOSCommand, DCSBIOSOutput>(command, output);
         }
 
         public static DCSBIOSOutput GetStringDCSBIOSOutput(string controlId)

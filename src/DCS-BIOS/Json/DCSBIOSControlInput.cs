@@ -9,6 +9,7 @@ namespace DCS_BIOS.Json
     /// </summary>
     public class DCSBIOSControlInput
     {
+        public string ControlId { get; set; }
 
         [JsonProperty("description", Required = Required.Default)]
         public string Description { get; set; }
@@ -25,10 +26,10 @@ namespace DCS_BIOS.Json
         [JsonProperty("argument", Required = Required.Default)]
         public string Argument { get; set; }
 
-        public DCSBIOSInputInterface GetInputInterface(string controlId)
+        public DCSBIOSInputInterface GetInputInterface()
         {
             var inputInterface = new DCSBIOSInputInterface();
-            inputInterface.Consume(controlId, this);
+            inputInterface.Consume(ControlId, this);
             return inputInterface;
         }
     }
