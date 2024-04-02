@@ -53,6 +53,7 @@ namespace DCS_BIOS.Serialized
         private volatile uint _lastUIntValue = uint.MaxValue;
         private volatile string _lastStringValue = "";
         private bool _uintValueHasChanged;
+        private const string DEFAULT_VARIABLE_CHANGE_VALUE = "3200";
 
         [NonSerialized] private object _lockObject = new();
 
@@ -298,6 +299,39 @@ namespace DCS_BIOS.Serialized
             DCSBiosOutputComparison = (DCSBiosOutputComparison)Enum.Parse(typeof(DCSBiosOutputComparison), entries[1]);
             _specifiedValueUInt = (uint)int.Parse(entries[2]);
         }
+
+        public string GetIncCommand()
+        {
+            return $"{ControlId} INC\n";
+        }
+
+        public string GetDecCommand()
+        {
+            return $"{ControlId} DEC\n";
+        }
+
+        public string GetActionCommand()
+        {
+            return $"{ControlId} TOGGLE\n";
+        }
+
+        public string GetSetStateCommand(uint value)
+        {
+            return $"{ControlId} {value}\n";
+        }
+
+        public string GetVariableCommand(int value)
+        {
+            var s = value >= 0 ? "+" + value : "-" + value;
+            return $"{ControlId} {s}\n";
+        }
+
+        public string GetVariableDefaultCommand(bool inc)
+        {
+            var changeValue = inc ? "+" + DEFAULT_VARIABLE_CHANGE_VALUE : "-" + DEFAULT_VARIABLE_CHANGE_VALUE;
+            return $"{ControlId} {changeValue}\n";
+        }
+        
 
         [JsonProperty("ControlId", Required = Required.Default)]
         public string ControlId { get; set; }
