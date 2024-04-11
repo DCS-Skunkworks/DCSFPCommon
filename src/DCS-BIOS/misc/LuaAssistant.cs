@@ -17,6 +17,7 @@ namespace DCS_BIOS.misc
         private static DCSAircraft _dcsAircraft;
         private static string _jsonDirectory;
         private static string _dcsbiosAircraftLuaLocation;
+        private static string _dcsbiosCommonModulesLuaLocation;
         private static string _dcsbiosModuleLuaFilePath;
         private static readonly object LockObject = new();
         private const string DCSBIOS_LUA_NOT_FOUND_ERROR_MESSAGE = "Error loading DCS-BIOS lua.";
@@ -44,6 +45,7 @@ namespace DCS_BIOS.misc
             {
                 _jsonDirectory = value;
                 _dcsbiosAircraftLuaLocation = $@"{value}\..\..\lib\modules\aircraft_modules\";
+                _dcsbiosCommonModulesLuaLocation = $@"{value}\..\..\lib\modules\common_modules\";
                 _dcsbiosModuleLuaFilePath = $@"{value}\..\..\lib\modules\Module.lua";
             }
         }
@@ -232,7 +234,10 @@ namespace DCS_BIOS.misc
             {
                 lock (LockObject)
                 {
-                    ReadControlsFromLua(_dcsAircraft, $"{_dcsbiosAircraftLuaLocation}{_dcsAircraft.LuaFilename}");
+                    var location = _dcsAircraft.DCSBIOSLocation == DCSBIOSLocation.AircraftModules
+                        ? _dcsbiosAircraftLuaLocation
+                        : _dcsbiosCommonModulesLuaLocation;
+                    ReadControlsFromLua(_dcsAircraft, $"{location}{_dcsAircraft.LuaFilename}");
                     ReadModuleFunctionSignatures(_dcsbiosModuleLuaFilePath);
                 }
             }
