@@ -6,6 +6,13 @@
     using System.IO;
     using System.Linq;
 
+    public enum DCSBIOSLocation
+    {
+        AircraftModules,
+        CommonModules,
+        None
+    }
+
     /// <summary>
     /// Holds information about currently selected aircraft / module (DCS aircraft/helicopter).
     /// This class reads all modules from dcs-bios_modules.txt and the user can then select between these
@@ -17,20 +24,16 @@
 
         private static readonly object Lock = new();
         private static List<DCSAircraft> _modulesList = new();
+        public const int MetaModuleIDStart = 500;
 
         public static DCSAircraft SelectedAircraft { get; set; }
-        public const string DCSBIOS_META_DATA_START_FILE_NAME = "MetadataStart.json";
-        public const string DCSBIOS_META_DATA_END_FILE_NAME = "MetadataEnd.json";
-        public const string DCSBIOS_COMMON_DATA_FILE_NAME = "CommonData.json";
-        private const string DCSBIOS_META_DATA_START_MODULE = "MetadataStart";
-        private const string DCSBIOS_META_DATA_END_MODULE = "MetadataEnd";
-        private const string DCSBIOS_COMMON_DATA_MODULE = "CommonData";
 
-        private DCSAircraft(int id, string description, string jsonFilename)
+        private DCSAircraft(int id, string description, string jsonFilename, DCSBIOSLocation dcsbiosLocation)
         {
             ID = id;
             JSONFilename = jsonFilename;
             Description = description;
+            DCSBIOSLocation = dcsbiosLocation;
         }
 
         public static void Init()
@@ -42,15 +45,14 @@
 
         public string JSONFilename { get; }
 
+        public DCSBIOSLocation DCSBIOSLocation { get;}
+
         public string LuaFilename
         {
             get => JSONFilename.Replace(".json", ".lua");
         }
 
-        public bool IsMetaModule
-        {
-            get => JSONFilename.Contains(DCSBIOS_META_DATA_END_MODULE) || JSONFilename.Contains(DCSBIOS_META_DATA_START_MODULE) || JSONFilename.Contains(DCSBIOS_COMMON_DATA_MODULE);
-        }
+        public bool IsMetaModule => ID >= MetaModuleIDStart;
 
         /// <summary>
         /// This is not exact science
@@ -115,18 +117,18 @@
             {
                 if (!_modulesList.Exists(o => o.ID == 1))
                 {
-                    var module = new DCSAircraft(1, "NoFrameLoadedYet", "NOFRAMELOADEDYET");
+                    var module = new DCSAircraft(1, "NoFrameLoadedYet", "NOFRAMELOADEDYET", DCSBIOSLocation.None);
                     _modulesList.Add(module);
                 }
 
                 if (!_modulesList.Exists(o => o.ID == 2))
                 {
-                    var module = new DCSAircraft(2, "Key Emulation", "KEYEMULATOR");
+                    var module = new DCSAircraft(2, "Key Emulation", "KEYEMULATOR", DCSBIOSLocation.None);
                     _modulesList.Add(module);
                 }
                 if (!_modulesList.Exists(o => o.ID == 3))
                 {
-                    var module = new DCSAircraft(3, "Key Emulation with SRS support", "KEYEMULATOR_SRS");
+                    var module = new DCSAircraft(3, "Key Emulation with SRS support", "KEYEMULATOR_SRS", DCSBIOSLocation.None);
                     _modulesList.Add(module);
                 }
             }
@@ -159,15 +161,7 @@
 
             var stringArray = File.ReadAllLines(dcsbiosConfigFile);
 
-            //Inject these static DCS-BIOS modules
-
-            lock (Lock)
-            {
-                _modulesList.Add(new DCSAircraft(500, DCSBIOS_META_DATA_END_MODULE, DCSBIOS_META_DATA_END_FILE_NAME));
-                _modulesList.Add(new DCSAircraft(501, DCSBIOS_META_DATA_START_MODULE, DCSBIOS_META_DATA_START_FILE_NAME));
-                _modulesList.Add(new DCSAircraft(502, DCSBIOS_COMMON_DATA_MODULE, DCSBIOS_COMMON_DATA_FILE_NAME));
-            }
-
+            
             // A-10C|5|A-10C Thunderbolt/II
             foreach (var s in stringArray)
             {
@@ -182,10 +176,23 @@
                 var json = parts[0] + ".json";
                 var id = int.Parse(parts[1]);
                 var properName = parts[2];
+                var dcsbiosLocation = DCSBIOSLocation.None;
+
+                if (parts.Length == 3)
+                {
+                    //Not all modules have the property set, for those it is assumed they are located in AircraftModules.
+                    dcsbiosLocation = DCSBIOSLocation.AircraftModules;
+                }
+                else
+                {
+                    var enumParseResult = Enum.TryParse<DCSBIOSLocation>(parts[3], true, out var dcsbiosLocationParse);
+                    if (enumParseResult) dcsbiosLocation = dcsbiosLocationParse;
+                }
+
 
                 lock (Lock)
                 {
-                    _modulesList.Add(new DCSAircraft(id, properName, json));
+                    _modulesList.Add(new DCSAircraft(id, properName, json, dcsbiosLocation));
                 }
             }
 
@@ -241,6 +248,21 @@
                 LogErrorAndThrowException($"DCSAircraft : Failed to find internal module KeyEmulator. Modules loaded : {Modules.Count}");
             }
             return module;
+        }
+
+        public static string GetMetaDataEndJSONFilename()
+        {
+            return _modulesList.First(o => o.JSONFilename.Contains("MetadataEnd")).JSONFilename;
+        }
+
+        public static string GetMetaDataStartJSONFilename()
+        {
+            return _modulesList.First(o => o.JSONFilename.Contains("MetadataStart")).JSONFilename;
+        }
+
+        public static string GetCommonDataJSONFilename()
+        {
+            return _modulesList.First(o => o.JSONFilename.Contains("CommonData")).JSONFilename;
         }
 
         public static DCSAircraft GetKeyEmulatorSRS()

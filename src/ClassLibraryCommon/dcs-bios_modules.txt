@@ -33,7 +33,7 @@ Mi-8MT|29|Mi-8MT
 Mig-15bis|30|MiG-15bis
 Mig-19P|31|MiG-19P Farmer
 Mig-21Bis|32|MiG-21bis
-NS430|33|NS 430 GPS
+NS430|33|NS-430 Navigation System|CommonModules
 P-47D|34|P-47D Thunderbolt
 P-51D|35|TF/P-51D Mustang
 SA342|36|SA342 Gazelle
@@ -48,4 +48,7 @@ F-15E|44|F-15E Strike Eagle
 Mosquito|45|Mosquito FB Mk. VI
 AH-64D|46|AH-64D Apache
 MH-60R|47|MH-60R SeaHawk
-NS-430|48|NS-430 Navigation System
+
+MetadataEnd|500|MetadataEnd|CommonModules
+MetadataStart|501|MetadataStart|CommonModules
+CommonData|502|CommonData|CommonModules

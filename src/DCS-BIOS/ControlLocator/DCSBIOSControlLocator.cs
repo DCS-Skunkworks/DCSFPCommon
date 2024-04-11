@@ -15,6 +15,7 @@ namespace DCS_BIOS.ControlLocator
     using Newtonsoft.Json;
     using NLog;
 
+
     /// <summary>
     /// Reads the aircraft's / helicopter's JSON file containing the cockpit controls.
     /// Whenever a class needs a specific DCS-BIOS control it asks for the control using
@@ -208,9 +209,13 @@ namespace DCS_BIOS.ControlLocator
         /// </summary>
         public static List<DCSBIOSControl> GetMetaControls()
         {
-            var controlList = GetModuleControlsFromJson(DCSAircraft.DCSBIOS_META_DATA_START_FILE_NAME, true);
-            controlList.AddRange(GetModuleControlsFromJson(DCSAircraft.DCSBIOS_META_DATA_END_FILE_NAME, true));
-            controlList.AddRange(GetModuleControlsFromJson(DCSAircraft.DCSBIOS_COMMON_DATA_FILE_NAME, true));
+            var controlList = new List<DCSBIOSControl>();
+
+            foreach (var dcsAircraft in DCSAircraft.Modules.Where(o => o.ID >= DCSAircraft.MetaModuleIDStart))
+            {
+                controlList.AddRange(GetModuleControlsFromJson(dcsAircraft.JSONFilename, true));
+            }
+
             return controlList;
         }
 
@@ -404,7 +409,7 @@ namespace DCS_BIOS.ControlLocator
 
         private static void LoadMetaDataEnd(string jsonDirectory)
         {
-            if (DCSBIOSAircraftLoadStatus.IsLoaded(DCSAircraft.DCSBIOS_META_DATA_END_FILE_NAME) || Common.IsEmulationModesFlagSet(EmulationMode.KeyboardEmulationOnly) || DCSAircraft.IsNoFrameLoadedYet(_dcsAircraft))
+            if (DCSBIOSAircraftLoadStatus.IsLoaded(DCSAircraft.GetMetaDataEndJSONFilename()) || Common.IsEmulationModesFlagSet(EmulationMode.KeyboardEmulationOnly) || DCSAircraft.IsNoFrameLoadedYet(_dcsAircraft))
             {
                 return;
             }
@@ -413,9 +418,9 @@ namespace DCS_BIOS.ControlLocator
             {
                 lock (LockObject)
                 {
-                    _dcsbiosControls.AddRange(ReadControlsFromDocJson(jsonDirectory + $"\\{DCSAircraft.DCSBIOS_META_DATA_END_FILE_NAME}"));
+                    _dcsbiosControls.AddRange(ReadControlsFromDocJson(jsonDirectory + $"\\{DCSAircraft.GetMetaDataEndJSONFilename()}"));
 
-                    DCSBIOSAircraftLoadStatus.SetLoaded(DCSAircraft.DCSBIOS_META_DATA_END_FILE_NAME, true);
+                    DCSBIOSAircraftLoadStatus.SetLoaded(DCSAircraft.GetMetaDataEndJSONFilename(), true);
                 }
             }
             catch (Exception ex)
@@ -426,7 +431,7 @@ namespace DCS_BIOS.ControlLocator
 
         private static void LoadCommonData(string jsonDirectory)
         {
-            if (DCSBIOSAircraftLoadStatus.IsLoaded(DCSAircraft.DCSBIOS_COMMON_DATA_FILE_NAME) || Common.IsEmulationModesFlagSet(EmulationMode.KeyboardEmulationOnly) || DCSAircraft.IsNoFrameLoadedYet(_dcsAircraft))
+            if (DCSBIOSAircraftLoadStatus.IsLoaded(DCSAircraft.GetCommonDataJSONFilename()) || Common.IsEmulationModesFlagSet(EmulationMode.KeyboardEmulationOnly) || DCSAircraft.IsNoFrameLoadedYet(_dcsAircraft))
             {
                 return;
             }
@@ -435,8 +440,8 @@ namespace DCS_BIOS.ControlLocator
             {
                 lock (LockObject)
                 {
-                    _dcsbiosControls.AddRange(ReadControlsFromDocJson(jsonDirectory + $"\\{DCSAircraft.DCSBIOS_COMMON_DATA_FILE_NAME}"));
-                    DCSBIOSAircraftLoadStatus.SetLoaded(DCSAircraft.DCSBIOS_COMMON_DATA_FILE_NAME, true);
+                    _dcsbiosControls.AddRange(ReadControlsFromDocJson(jsonDirectory + $"\\{DCSAircraft.GetCommonDataJSONFilename()}"));
+                    DCSBIOSAircraftLoadStatus.SetLoaded(DCSAircraft.GetCommonDataJSONFilename(), true);
                 }
             }
             catch (Exception ex)
