@@ -58,7 +58,6 @@ namespace DCS_BIOS
         ************************/
 
         private readonly ConcurrentQueue<Tuple<string, string>> _dcsbiosCommandsQueue = new ();
-        private AutoResetEvent _dcsbiosCommandWaitingResetEvent = new(false);
 
         private readonly object _lockExceptionObject = new();
         private Exception _lastException;
@@ -67,6 +66,7 @@ namespace DCS_BIOS
         private readonly DcsBiosNotificationMode _dcsBiosNotificationMode;
         private volatile bool _isRunning;
         private Thread _sendThread;
+        private const int SEND_COMMANDS_SLEEP = 50;
 
         public bool IsRunning
         {
@@ -127,8 +127,6 @@ namespace DCS_BIOS
                 }
 
                 _udpReceiveThrottleAutoResetEvent = new(false);
-
-                _dcsbiosCommandWaitingResetEvent = new(false);
                 
                 _dcsProtocolParser = DCSBIOSProtocolParser.GetParser();
 
@@ -179,11 +177,6 @@ namespace DCS_BIOS
             try
             {
                 _isRunning = false;
-
-                _dcsbiosCommandWaitingResetEvent?.Set();
-                _dcsbiosCommandWaitingResetEvent?.Close();
-                _dcsbiosCommandWaitingResetEvent?.Dispose();
-                _dcsbiosCommandWaitingResetEvent = null;
 
                 _sendThread = null;
 
@@ -350,7 +343,11 @@ namespace DCS_BIOS
             var tuple = new Tuple<string, string>(sender, command);
             _dcsbiosCommandsQueue.Enqueue(tuple);
 
-            _dcsbiosCommandWaitingResetEvent.Set();
+            /*
+             * 17.04.2024, had an AutoResetEvent here for the SendCommands thread.
+             * That didn't work out at all, radio sync stopped working, started resetting sync
+             * variables and very choppy dial changing. This seems OK now without it, doesn't consume CPU.
+             */
         }
 
         private void SendCommands()
@@ -359,16 +356,23 @@ namespace DCS_BIOS
             {
                 try
                 {
-                    _dcsbiosCommandWaitingResetEvent.WaitOne();
                     if (!_isRunning) break;
 
                     _dcsbiosCommandsQueue.TryDequeue(out var tuple);
 
-                    if (tuple == null) continue;
+                    if (tuple == null)
+                    {
+                        Thread.Sleep(SEND_COMMANDS_SLEEP);
+                        continue;
+                    }
 
                     var sender = tuple.Item1;
                     var dcsbiosCommand = tuple.Item2;
-                    if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0) return;
+                    if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0)
+                    {
+                        Thread.Sleep(SEND_COMMANDS_SLEEP);
+                        continue;
+                    }
 
                     Debug.WriteLine($"Sending command : {dcsbiosCommand}");
 
@@ -378,6 +382,7 @@ namespace DCS_BIOS
                     _udpSendClient.Send(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
 
                     BIOSEventHandler.DCSBIOSCommandWasSent(sender, dcsbiosCommand);
+                    Thread.Sleep(SEND_COMMANDS_SLEEP);
                 }
                 catch (OperationCanceledException e)
                 {
