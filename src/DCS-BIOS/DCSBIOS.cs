@@ -66,12 +66,9 @@ namespace DCS_BIOS
         private readonly DcsBiosNotificationMode _dcsBiosNotificationMode;
         private volatile bool _isRunning;
         private Thread _sendThread;
-        private const int SEND_COMMANDS_SLEEP = 50;
+        public int DelayBetweenCommands { get; set; } = 5;
 
-        public bool IsRunning
-        {
-            get => _isRunning;
-        }
+        public bool IsRunning => _isRunning;
 
         public DCSBIOS(string ipFromUdp, string ipToUdp, int portFromUdp, int portToUdp, DcsBiosNotificationMode dcsNotificationMode)
         {
@@ -362,7 +359,7 @@ namespace DCS_BIOS
 
                     if (tuple == null)
                     {
-                        Thread.Sleep(SEND_COMMANDS_SLEEP);
+                        Thread.Sleep(DelayBetweenCommands);
                         continue;
                     }
 
@@ -370,7 +367,7 @@ namespace DCS_BIOS
                     var dcsbiosCommand = tuple.Item2;
                     if (dcsbiosCommand == null || dcsbiosCommand.Trim().Length == 0)
                     {
-                        Thread.Sleep(SEND_COMMANDS_SLEEP);
+                        Thread.Sleep(DelayBetweenCommands);
                         continue;
                     }
 
@@ -382,7 +379,7 @@ namespace DCS_BIOS
                     _udpSendClient.Send(asciiBytes.ToArray(), asciiBytes.ToArray().Length, _ipEndPointSenderUdp);
 
                     BIOSEventHandler.DCSBIOSCommandWasSent(sender, dcsbiosCommand);
-                    Thread.Sleep(SEND_COMMANDS_SLEEP);
+                    Thread.Sleep(DelayBetweenCommands);
                 }
                 catch (OperationCanceledException e)
                 {
