@@ -364,19 +364,12 @@ namespace DCS_BIOS.ControlLocator
                     ReadDataFromJsonFile(DCSAircraft.GetNS430().JSONFilename);
                 }
 
-                if (DCSAircraft.IsFlamingCliff(DCSAircraft))
-                {
-                    LoadCommonData(_jsonDirectory);
-                    LoadMetaDataEnd(_jsonDirectory);
-                }
-                else
-                {
-                    LoadCommonData(_jsonDirectory);
-                    LoadMetaDataEnd(_jsonDirectory);
+                LoadCommonData(_jsonDirectory);
+                LoadMetaDataEnd(_jsonDirectory);
 
-                    // Load the controls for the actual aircraft/helicopter
-                    ReadDataFromJsonFile(DCSAircraft.JSONFilename);
-                }
+                // Load the controls for the actual aircraft/helicopter
+                ReadDataFromJsonFile(DCSAircraft.JSONFilename);
+
 
                 // Remove duplicates which may come from loading NS430 or other additional profiles
                 _dcsbiosControls = _dcsbiosControls.Distinct(new DCSBIOSControlComparer()).ToList();
