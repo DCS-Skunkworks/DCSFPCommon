@@ -508,6 +508,9 @@
             return dcsfpModule.ID == 46;
         }
 
+        public static bool IsF4E(DCSAircraft dcsfpModule) {
+            return dcsfpModule.ID == 48;
+        }
 
         public static DCSAircraft GetBackwardCompatible(string oldEnumValue)
         {
