@@ -512,6 +512,10 @@
             return dcsfpModule.ID == 48;
         }
 
+        public static bool IsOH58D(DCSAircraft dcsfpModule) {
+            return dcsfpModule.ID == 49;
+        }
+
         public static DCSAircraft GetBackwardCompatible(string oldEnumValue)
         {
             int? moduleNumber = oldEnumValue switch
