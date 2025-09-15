@@ -516,11 +516,9 @@
             return dcsfpModule.ID == 49;
         }
 
-        public static bool IsCH47(DCSAircraft dcsfpModule)
-        {
+        public static bool IsCH47F(DCSAircraft dcsfpModule) {
             return dcsfpModule.ID == 50;
         }
-        
 
         public static DCSAircraft GetBackwardCompatible(string oldEnumValue)
         {
